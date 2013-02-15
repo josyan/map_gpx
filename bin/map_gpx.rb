@@ -97,7 +97,7 @@ def generate_svg(tracks, min_max)
       tracks.each do |track|
         track[:points].each_index do |index|
           if index > 0
-            line track[:points][index - 1].lon, track[:points][index - 1].lat, track[:points][index].lon, track[:points][index].lat, 'stroke' => generate_speed_color(min_max[:speed][:min], min_max[:speed][:max], track[:points][index].speed), 'stroke-width' => 3, 'stroke-opacity' => (1.0 / tracks.length)
+            line track[:points][index - 1].lon, track[:points][index - 1].lat, track[:points][index].lon, track[:points][index].lat, 'stroke' => generate_speed_color(min_max[:speed][:min], min_max[:speed][:max], track[:points][index].speed), 'stroke-width' => 3, 'stroke-opacity' => 0.1
           end
         end
       end
@@ -110,7 +110,7 @@ puts "Mapping GPX files to SVG"
 tracks = []
 
 Dir['gpx/*.gpx'].each do |gpx_file|
-  puts "Parsing #{gpx_file}"
+  puts "Parsing #{gpx_file}..."
   tracks << { :filename => gpx_file,
               :points   => parse_gpx(gpx_file) }
 end
@@ -121,14 +121,19 @@ min_max = { :lat   => { :min => nil,
                          :max => nil },
              :speed => { :min => nil,
                          :max => nil } }
+puts "Computing boundaries..."
 tracks.each do |track|
   get_min_max(min_max, track[:points])
 end
+puts "Normalizing..."
 translate(min_max, tracks)
+puts "Computing speeds..."
 tracks.each do |track|
   compute_speed(track[:points])
 end
+puts "Computing speed limits..."
 tracks.each do |track|
   get_min_max_speed(min_max, track[:points])
 end
+puts "Rendering..."
 generate_svg(tracks, min_max)
