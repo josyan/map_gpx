@@ -7,7 +7,6 @@ require 'rasem'
 require 'pp'
 
 DIST_FACTOR = 10000
-SPEED_FACTOR = 100
 
 class Point
   attr_accessor :lat, :lon, :at, :speed
@@ -20,20 +19,62 @@ class Point
   end
 end
 
-def parse_gpx(gpx_file)
-  gpx_doc = Nokogiri::XML.parse(File.open(gpx_file))
-  gpx_doc.remove_namespaces!
-  gpx_doc.xpath('/gpx/trk/trkseg/trkpt').map do |gpx_point|
-    Point.new(gpx_point.attribute('lat').content, gpx_point.attribute('lon').content, gpx_point.at_xpath('time').content)
+class Track
+  SPEED_FACTOR = 100
+
+  attr_accessor :filename, :points, :min_speed, :max_speed, :min_lat, :max_lat, :min_lon, :max_lon
+
+  def initialize(gpx_file)
+    @filename = gpx_file
+    @points = parse_gpx(@filename)
+    set_min_max_pos
+    compute_speed
+    set_min_map_speed
+  end
+
+  private
+
+  def parse_gpx(gpx_file)
+    gpx_doc = Nokogiri::XML.parse(File.open(gpx_file))
+    gpx_doc.remove_namespaces!
+    gpx_doc.xpath('/gpx/trk/trkseg/trkpt').map do |gpx_point|
+      Point.new(gpx_point.attribute('lat').content, gpx_point.attribute('lon').content, gpx_point.at_xpath('time').content)
+    end
+  end
+
+  def set_min_max_pos
+    @points.each do |point|
+      @min_lat = point.lat if @min_lat.nil? or point.lat < @min_lat
+      @max_lat = point.lat if @max_lat.nil? or point.lat > @max_lat
+      @min_lon = point.lon if @min_lon.nil? or point.lon < @min_lon
+      @max_lon = point.lon if @max_lon.nil? or point.lon > @max_lon
+    end
+  end
+
+  def compute_speed
+    @points.each_index do |index|
+      if index > 0
+        dist = Math.sqrt((points[index - 1].lon - points[index].lon)**2 + (points[index - 1].lat - points[index].lat)**2)
+        time = points[index].at - points[index - 1].at
+        points[index].speed = dist / time * SPEED_FACTOR if time > 0
+      end
+    end
+  end
+
+  def set_min_max_speed
+    @points.each do |point|
+      @min_speed = point.speed if @min_speed.nil? or point.speed < @min_speed
+      @max_speed = point.speed if @max_speed.nil? or point.speed > @max_speed
+    end
   end
 end
 
-def get_min_max(min_max, points)
-  points.each do |point|
-    min_max[:lat][:min] = point.lat if min_max[:lat][:min].nil? or point.lat < min_max[:lat][:min]
-    min_max[:lat][:max] = point.lat if min_max[:lat][:max].nil? or point.lat > min_max[:lat][:max]
-    min_max[:lon][:min] = point.lon if min_max[:lon][:min].nil? or point.lon < min_max[:lon][:min]
-    min_max[:lon][:max] = point.lon if min_max[:lon][:max].nil? or point.lon > min_max[:lon][:max]
+def get_min_max(min_max, tracks)
+  tracks.each do |track|
+    min_max[:lat][:min] = track.min_lat if min_max[:lat][:min].nil? or track.min_lat < min_max[:lat][:min]
+    min_max[:lat][:max] = track.max_lat if min_max[:lat][:max].nil? or track.max_lat > min_max[:lat][:max]
+    min_max[:lon][:min] = track.min_lon if min_max[:lon][:min].nil? or track.min_lon < min_max[:lon][:min]
+    min_max[:lon][:max] = track.max_lon if min_max[:lon][:max].nil? or track.max_lon > min_max[:lon][:max]
   end
 end
 
@@ -60,16 +101,6 @@ def translate(min_max, tracks)
   tracks.each do |track|
     track[:points].each do |point|
       point.lat = max_lat - point.lat
-    end
-  end
-end
-
-def compute_speed(points)
-  points.each_index do |index|
-    if index > 0
-      dist = Math.sqrt((points[index - 1].lon - points[index].lon)**2 + (points[index - 1].lat - points[index].lat)**2)
-      time = points[index].at - points[index - 1].at
-      points[index].speed = dist / time * SPEED_FACTOR if time > 0
     end
   end
 end
@@ -111,8 +142,7 @@ tracks = []
 
 Dir['gpx/*.gpx'].each do |gpx_file|
   puts "Parsing #{gpx_file}..."
-  tracks << { :filename => gpx_file,
-              :points   => parse_gpx(gpx_file) }
+  tracks << Track.new(gpx_file)
 end
 
 min_max = { :lat   => { :min => nil,
@@ -122,11 +152,11 @@ min_max = { :lat   => { :min => nil,
              :speed => { :min => nil,
                          :max => nil } }
 puts "Computing boundaries..."
-tracks.each do |track|
-  get_min_max(min_max, track[:points])
-end
+get_min_max min_max, tracks
+
 puts "Normalizing..."
-translate(min_max, tracks)
+translate min_max, tracks
+
 puts "Computing speeds..."
 tracks.each do |track|
   compute_speed(track[:points])
