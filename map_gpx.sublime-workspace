@@ -4,6 +4,10 @@
 		"selected_items":
 		[
 			[
+				"gpx",
+				"gpx_file"
+			],
+			[
 				"clea",
 				"cleared_for_sale"
 			],
@@ -510,15 +514,19 @@
 			[
 				"Product",
 				"ProductRelationCode"
-			],
-			[
-				"LIST_046_",
-				"LIST_046_FOR_UNRESTRICTED_SALE"
 			]
 		]
 	},
 	"buffers":
 	[
+		{
+			"file": "bin/map_gpx.rb",
+			"settings":
+			{
+				"buffer_size": 4257,
+				"line_ending": "Unix"
+			}
+		}
 	],
 	"build_system": "",
 	"command_palette":
@@ -789,6 +797,8 @@
 		"case_sensitive": true,
 		"find_history":
 		[
+			"points",
+			"@min_max",
 			"create_status",
 			"populate_expo",
 			".get_exportation_state",
@@ -914,9 +924,7 @@
 			"apple-interest-age-years",
 			"get_alv_publication_audience",
 			"NoEd",
-			"get_alv_publication_audience",
-			"get_alv_audience",
-			"AudienceCode"
+			"get_alv_publication_audience"
 		],
 		"highlight": true,
 		"in_selection": false,
@@ -1022,8 +1030,38 @@
 	"groups":
 	[
 		{
+			"selected": 0,
 			"sheets":
 			[
+				{
+					"buffer": 0,
+					"file": "bin/map_gpx.rb",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 4257,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								3476,
+								3476
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Ruby/Ruby.tmLanguage",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1416.0,
+						"zoom_level": 1.0
+					},
+					"type": "text"
+				}
 			]
 		}
 	],
