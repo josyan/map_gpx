@@ -6,7 +6,7 @@ require 'fileutils'
 require 'rasem'
 require 'pp'
 
-FACTOR = 10000
+FACTOR = 30000
 
 class Point
   attr_accessor :lat, :lon, :at
@@ -74,7 +74,7 @@ def generate_svg(filename, points, min_max)
     Rasem::SVGImage.new(min_max[:lon][:max], min_max[:lat][:max], svg_file) do |image|
       points.each_index do |index|
         if index > 0
-          line points[index - 1].lon, points[index - 1].lat, points[index].lon, points[index].lat
+          line points[index - 1].lon, points[index - 1].lat, points[index].lon, points[index].lat, 'stroke' => 'black', 'stroke-width' => 3
         end
       end
     end
