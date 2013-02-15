@@ -28,45 +28,39 @@ def parse_gpx(gpx_file)
   end
 end
 
-def get_min_max(points)
-  min_max = { :lat => { :min => nil,
-                        :max => nil },
-              :lon => { :min => nil,
-                        :max => nil } }
-  points.each_with_index do |point, index|
-    if index == 0
-      min_max[:lat][:min] = point.lat
-      min_max[:lat][:max] = point.lat
-      min_max[:lon][:min] = point.lon
-      min_max[:lon][:max] = point.lon
-    else
-      min_max[:lat][:min] = point.lat if point.lat < min_max[:lat][:min]
-      min_max[:lat][:max] = point.lat if point.lat > min_max[:lat][:max]
-      min_max[:lon][:min] = point.lon if point.lon < min_max[:lon][:min]
-      min_max[:lon][:max] = point.lon if point.lon > min_max[:lon][:max]
-    end
+def get_min_max(min_max, points)
+  points.each do |point|
+    min_max[:lat][:min] = point.lat if min_max[:lat][:min].nil? or point.lat < min_max[:lat][:min]
+    min_max[:lat][:max] = point.lat if min_max[:lat][:max].nil? or point.lat > min_max[:lat][:max]
+    min_max[:lon][:min] = point.lon if min_max[:lon][:min].nil? or point.lon < min_max[:lon][:min]
+    min_max[:lon][:max] = point.lon if min_max[:lon][:max].nil? or point.lon > min_max[:lon][:max]
   end
-  min_max
 end
 
-def translate(min_max, points)
+def translate(min_max, tracks)
   min_lat = min_max[:lat][:min]
   min_max[:lat][:min] = 0
   min_max[:lat][:max] = (min_max[:lat][:max] - min_lat) * DIST_FACTOR
   min_lon = min_max[:lon][:min]
   min_max[:lon][:min] = 0
   min_max[:lon][:max] = (min_max[:lon][:max] - min_lon) * DIST_FACTOR
-  points.each do |point|
-    point.lat = (point.lat - min_lat) * DIST_FACTOR
-    point.lon = (point.lon - min_lon) * DIST_FACTOR
+  tracks.each do |track|
+    track[:points].each do |point|
+      point.lat = (point.lat - min_lat) * DIST_FACTOR
+      point.lon = (point.lon - min_lon) * DIST_FACTOR
+    end
   end
   # invert all lat, else drawing is top <-> bottom
   max_lat = 0
-  points.each do |point|
-    max_lat = point.lat if point.lat > max_lat
+  tracks.each do |track|
+    track[:points].each do |point|
+      max_lat = point.lat if point.lat > max_lat
+    end
   end
-  points.each do |point|
-    point.lat = max_lat - point.lat
+  tracks.each do |track|
+    track[:points].each do |point|
+      point.lat = max_lat - point.lat
+    end
   end
 end
 
@@ -81,17 +75,10 @@ def compute_speed(points)
 end
 
 def get_min_max_speed(min_max, points)
-  min_max[:speed] ||= {}
-  points.each_with_index do |point, index|
-    if index == 0
-      min_max[:speed][:min] = point.speed
-      min_max[:speed][:max] = point.speed
-    else
-      min_max[:speed][:min] = point.speed if point.speed < min_max[:speed][:min]
-      min_max[:speed][:max] = point.speed if point.speed > min_max[:speed][:max]
-    end
+  points.each do |point|
+    min_max[:speed][:min] = point.speed if min_max[:speed][:min].nil? or point.speed < min_max[:speed][:min]
+    min_max[:speed][:max] = point.speed if min_max[:speed][:max].nil? or point.speed > min_max[:speed][:max]
   end
-  min_max
 end
 
 def generate_speed_color(min_speed, max_speed, current_speed)
@@ -103,27 +90,45 @@ def generate_speed_color(min_speed, max_speed, current_speed)
   end
 end
 
-def generate_svg(filename, points, min_max)
+def generate_svg(tracks, min_max)
   FileUtils.mkdir_p('svg')
-  File.open("svg/#{File.basename(filename, '.gpx')}.svg", 'w') do |svg_file|
+  File.open("svg/graph_#{Time.now.strftime('%Y%m%d%H%M%S')}.svg", 'w') do |svg_file|
     Rasem::SVGImage.new(min_max[:lon][:max], min_max[:lat][:max], svg_file) do |image|
-      points.each_index do |index|
-        if index > 0
-          line points[index - 1].lon, points[index - 1].lat, points[index].lon, points[index].lat, 'stroke' => generate_speed_color(min_max[:speed][:min], min_max[:speed][:max], points[index].speed), 'stroke-width' => 3 
+      tracks.each do |track|
+        track[:points].each_index do |index|
+          if index > 0
+            line track[:points][index - 1].lon, track[:points][index - 1].lat, track[:points][index].lon, track[:points][index].lat, 'stroke' => generate_speed_color(min_max[:speed][:min], min_max[:speed][:max], track[:points][index].speed), 'stroke-width' => 3, 'stroke-opacity' => (1.0 / tracks.length)
+          end
         end
       end
     end
   end
 end
 
-puts "Mapping GPX file to SVG"
+puts "Mapping GPX files to SVG"
+
+tracks = []
 
 Dir['gpx/*.gpx'].each do |gpx_file|
-  puts "Analyzing #{gpx_file}"
-  points = parse_gpx(gpx_file)
-  min_max = get_min_max(points)
-  translate(min_max, points)
-  compute_speed(points)
-  min_max = get_min_max_speed(min_max, points)
-  generate_svg(File.basename(gpx_file), points, min_max)
+  puts "Parsing #{gpx_file}"
+  tracks << { :filename => gpx_file,
+              :points   => parse_gpx(gpx_file) }
 end
+
+min_max = { :lat   => { :min => nil,
+                         :max => nil },
+             :lon   => { :min => nil,
+                         :max => nil },
+             :speed => { :min => nil,
+                         :max => nil } }
+tracks.each do |track|
+  get_min_max(min_max, track[:points])
+end
+translate(min_max, tracks)
+tracks.each do |track|
+  compute_speed(track[:points])
+end
+tracks.each do |track|
+  get_min_max_speed(min_max, track[:points])
+end
+generate_svg(tracks, min_max)
