@@ -93,11 +93,11 @@ end
 def generate_svg(tracks, min_max)
   FileUtils.mkdir_p('svg')
   File.open("svg/graph_#{Time.now.strftime('%Y%m%d%H%M%S')}.svg", 'w') do |svg_file|
-    Rasem::SVGImage.new(min_max[:lon][:max], min_max[:lat][:max], svg_file) do |image|
+    Rasem::SVGImage.new(min_max[:lon][:max].round(2), min_max[:lat][:max].round(2), svg_file) do |image|
       tracks.each do |track|
         track[:points].each_index do |index|
           if index > 0
-            line track[:points][index - 1].lon, track[:points][index - 1].lat, track[:points][index].lon, track[:points][index].lat, 'stroke' => generate_speed_color(min_max[:speed][:min], min_max[:speed][:max], track[:points][index].speed), 'stroke-width' => 3, 'stroke-opacity' => 0.1
+            line track[:points][index - 1].lon.round(2), track[:points][index - 1].lat.round(2), track[:points][index].lon.round(2), track[:points][index].lat.round(2), 'stroke' => generate_speed_color(min_max[:speed][:min], min_max[:speed][:max], track[:points][index].speed), 'stroke-width' => 3, 'stroke-opacity' => 0.1
           end
         end
       end
