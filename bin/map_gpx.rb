@@ -6,14 +6,14 @@ require 'fileutils'
 require 'rasem'
 require 'pp'
 
-DIST_FACTOR = 10000
-
 class Point
+  DIST_FACTOR = 10000
+
   attr_accessor :x, :y, :at, :speed
 
   def initialize(x, y, at)
-    @x = x.to_f
-    @y = y.to_f
+    @x = (x.to_f * DIST_FACTOR).round(2)
+    @y = (y.to_f * DIST_FACTOR).round(2)
     @at = DateTime.parse(at).to_time
     @speed = 0
   end
@@ -46,20 +46,19 @@ class Track
   end
 
   def translate(min_x, min_y)
-    @min_x = (@min_x - min_x) * DIST_FACTOR
-    @max_x = (@max_x - min_x) * DIST_FACTOR
-    @min_y = (@min_y - min_y) * DIST_FACTOR
-    @max_y = (@max_y - min_y) * DIST_FACTOR
+    @min_x = @min_x - min_x
+    @max_x = @max_x - min_x
+    @min_y = @min_y - min_y
+    @max_y = @max_y - min_y
     @points.each do |point|
-      point.x = (point.x - min_x) * DIST_FACTOR
-      point.y = (point.y - min_y) * DIST_FACTOR
+      point.x = point.x - min_x
+      point.y = point.y - min_y
     end
   end
 
-  def invert_y
-    amp = @max_y - @min_y
+  def invert_y(max_y)
     @points.each do |point|
-      point.y = @min_y + amp - point.y
+      point.y = max_y - point.y
     end
   end
 
@@ -112,16 +111,20 @@ end
 def translate(min_max, tracks)
   min_x = min_max[:min_x]
   min_max[:min_x] = 0
-  min_max[:max_x] = (min_max[:max_x] - min_x) * DIST_FACTOR
+  min_max[:max_x] = min_max[:max_x] - min_x
   min_y = min_max[:min_y]
   min_max[:min_y] = 0
-  min_max[:max_y] = (min_max[:max_y] - min_y) * DIST_FACTOR
+  min_max[:max_y] = min_max[:max_y] - min_y
   tracks.each do |track|
     track.translate min_x, min_y
   end
   # invert all y, else drawing is top <-> bottom
+  max_y = 0
   tracks.each do |track|
-    track.invert_y
+    max_y = track.max_y if track.max_y > max_y
+  end
+  tracks.each do |track|
+    track.invert_y max_y
   end
 end
 
@@ -144,7 +147,7 @@ def generate_svg(min_max, tracks)
                  track.points[index].x.round(2), track.points[index].y.round(2),
                  'stroke' => track.points[index].speed_color(track.min_speed, track.max_speed),
                  'stroke-width' => 1,
-                 'stroke-opacity' => (1.0 / tracks.length)
+                 'stroke-opacity' => 0.1
           end
         end
       end
