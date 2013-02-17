@@ -190,7 +190,7 @@ def generate_svg(min_max, tracks)
                  track.points[index].x.round(2) + AIR, track.points[index].y.round(2) + AIR,
                  'stroke' => track.points[index].speed_color(track.min_speed, track.max_speed),
                  'stroke-width' => 3,
-                 'stroke-opacity' => (1.0 / tracks.length)
+                 'stroke-opacity' => 0.1
           end
         end
       end
