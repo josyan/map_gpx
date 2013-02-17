@@ -6,6 +6,44 @@ require 'fileutils'
 require 'rasem'
 require 'pp'
 
+# from https://github.com/esmooov/svgsimplifier
+class RamerDouglasPeucker
+
+  def self.simplify(points, epsilon = 0.5)
+    # Find the point with the maximum distance
+    dmax = 0
+    index = 0
+
+    # If the distance is greater than epsilon, recursively simplify
+    for i in 1..(points.length - 1)
+      d = calculate_distance_from_line(points[0], points[-1], points[i])
+      if d > dmax
+        index = i
+        dmax = d
+      end
+    end
+
+    result = if dmax >= epsilon
+      recResults1 = simplify(points[0..index], epsilon)
+      recResults2 = simplify(points[index..-1], epsilon)
+      [recResults1[0..-2], recResults2[0..-1]].flatten
+    else
+      avg_speed = points.inject(0) { |t, p| t + p.speed } / points.length
+      points[-1].speed = avg_speed
+      [points[0], points[-1]]
+    end
+    result
+  end
+
+  private
+
+  def self.calculate_distance_from_line(a, b, p)
+    normal_length = Math.hypot(b.x - a.x, b.y - a.y)
+    ((p.x - a.x) * (b.y - a.y) - (p.y - a.y) * (b.x - a.x)).abs / normal_length
+  end  
+
+end
+
 class Point
   DIST_FACTOR = 10000
 
@@ -23,7 +61,7 @@ class Point
     if percent < 0.5
       "rgb(255,#{(255 * percent * 2).round},0)"
     else
-      "rgb(#{(255 * (1 - percent * 2)).round},255,0)"
+      "rgb(#{(255 * (1 - percent) * 2).round},255,0)"
     end
   end
 end
@@ -36,12 +74,12 @@ class Track
   def initialize(gpx_file)
     @filename = gpx_file
     puts "  Parsing #{gpx_file}"
-    @points = parse_gpx(@filename)
-    puts "  Computing track limits"
+    @points = RamerDouglasPeucker.simplify(parse_gpx(@filename))
+    puts "    Computing track limits"
     set_min_max_pos
-    puts "  Computing speed"
+    puts "    Computing speed"
     compute_speed
-    puts "  Computing speed limits"
+    puts "    Computing speed limits"
     set_min_max_speed
   end
 
@@ -143,10 +181,10 @@ def generate_svg(min_max, tracks)
       tracks.each do |track|
         track.points.each_index do |index|
           if index > 0
-            line track.points[index - 1].x.round(2), track.points[index - 1].y.round(2),
-                 track.points[index].x.round(2), track.points[index].y.round(2),
+            line track.points[index - 1].x, track.points[index - 1].y,
+                 track.points[index].x, track.points[index].y,
                  'stroke' => track.points[index].speed_color(track.min_speed, track.max_speed),
-                 'stroke-width' => 1,
+                 'stroke-width' => 3,
                  'stroke-opacity' => 0.1
           end
         end
