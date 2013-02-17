@@ -60,10 +60,14 @@ class Point
 
   def speed_color(min_speed, max_speed)
     percent = (@speed - min_speed) / (max_speed - min_speed)
-    if percent < 0.5
-      "rgb(255,#{(255 * percent * 2).round},0)"
+    if percent < 0.25
+      "rgb(0,#{(255 * percent * 4).round},255)"
+    elsif percent < 0.5
+      "rgb(0,255,#{(255 * (1 - percent) * 4).round})"
+    elsif percent < 0.75
+      "rgb(#{(255 * percent * 4).round},255,0)"
     else
-      "rgb(#{(255 * (1 - percent) * 2).round},255,0)"
+      "rgb(255,#{(255 * (1 - percent) * 4).round},0)"
     end
   end
 end
@@ -177,7 +181,6 @@ end
 
 def generate_svg(min_max, tracks)
   FileUtils.mkdir_p('svg')
-  # File.open("svg/graph_#{Time.now.strftime('%Y%m%d%H%M%S')}.svg", 'w') do |svg_file|
   File.open("svg/graph_test.svg", 'w') do |svg_file|
     Rasem::SVGImage.new(min_max[:max_x].round(2) + 2 * AIR, min_max[:max_y].round(2) + 2 * AIR, svg_file) do |image|
       tracks.each do |track|
@@ -187,7 +190,7 @@ def generate_svg(min_max, tracks)
                  track.points[index].x.round(2) + AIR, track.points[index].y.round(2) + AIR,
                  'stroke' => track.points[index].speed_color(track.min_speed, track.max_speed),
                  'stroke-width' => 3,
-                 'stroke-opacity' => 0.1
+                 'stroke-opacity' => (1.0 / tracks.length)
           end
         end
       end
