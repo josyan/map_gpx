@@ -6,6 +6,8 @@ require 'fileutils'
 require 'rasem'
 require 'pp'
 
+AIR = 5
+
 # from https://github.com/esmooov/svgsimplifier
 class RamerDouglasPeucker
 
@@ -177,12 +179,12 @@ def generate_svg(min_max, tracks)
   FileUtils.mkdir_p('svg')
   # File.open("svg/graph_#{Time.now.strftime('%Y%m%d%H%M%S')}.svg", 'w') do |svg_file|
   File.open("svg/graph_test.svg", 'w') do |svg_file|
-    Rasem::SVGImage.new(min_max[:max_x].round(2), min_max[:max_y].round(2), svg_file) do |image|
+    Rasem::SVGImage.new(min_max[:max_x].round(2) + 2 * AIR, min_max[:max_y].round(2) + 2 * AIR, svg_file) do |image|
       tracks.each do |track|
         track.points.each_index do |index|
           if index > 0
-            line track.points[index - 1].x, track.points[index - 1].y,
-                 track.points[index].x, track.points[index].y,
+            line track.points[index - 1].x.round(2) + AIR, track.points[index - 1].y.round(2) + AIR,
+                 track.points[index].x.round(2) + AIR, track.points[index].y.round(2) + AIR,
                  'stroke' => track.points[index].speed_color(track.min_speed, track.max_speed),
                  'stroke-width' => 3,
                  'stroke-opacity' => 0.1
