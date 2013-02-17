@@ -1,4 +1,4 @@
 map_gpx
 =======
 
-Draw a gpx file on a svg image
+Draw multiple GPX files on a single SVG, colorized by speed (red = slow, green = fast).
