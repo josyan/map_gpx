@@ -79,13 +79,9 @@ class Track
 
   def initialize(gpx_file)
     @filename = gpx_file
-    puts "  Parsing #{gpx_file}"
     @points = RamerDouglasPeucker.simplify(parse_gpx(@filename))
-    puts "    Computing track limits"
     set_min_max_pos
-    puts "    Computing speed"
     compute_speed
-    puts "    Computing speed limits"
     set_min_max_speed
   end
 
@@ -109,6 +105,7 @@ class Track
   private
 
   def parse_gpx(gpx_file)
+    puts "  Parsing #{gpx_file}"
     gpx_doc = Nokogiri::XML.parse(File.open(gpx_file))
     gpx_doc.remove_namespaces!
     gpx_doc.xpath('/gpx/trk/trkseg/trkpt').map do |gpx_point|
@@ -117,6 +114,7 @@ class Track
   end
 
   def set_min_max_pos
+    puts "    Computing track limits"
     @points.each do |point|
       @min_x = point.x if @min_x.nil? or point.x < @min_x
       @max_x = point.x if @max_x.nil? or point.x > @max_x
@@ -126,6 +124,7 @@ class Track
   end
 
   def compute_speed
+    puts "    Computing speed"
     @points.each_index do |index|
       if index > 0
         dist = Math.sqrt((points[index - 1].x - points[index].x)**2 + (points[index - 1].y - points[index].y)**2)
@@ -136,6 +135,7 @@ class Track
   end
 
   def set_min_max_speed
+    puts "    Computing speed limits"
     @points.each do |point|
       @min_speed = point.speed if @min_speed.nil? or point.speed < @min_speed
       @max_speed = point.speed if @max_speed.nil? or point.speed > @max_speed
@@ -144,6 +144,7 @@ class Track
 end
 
 def get_min_max_pos(min_max, tracks)
+  puts "Computing drawing limits"
   tracks.each do |track|
     min_max[:min_x] = track.min_x if min_max[:min_x].nil? or track.min_x < min_max[:min_x]
     min_max[:max_x] = track.max_x if min_max[:max_x].nil? or track.max_x > min_max[:max_x]
@@ -153,6 +154,7 @@ def get_min_max_pos(min_max, tracks)
 end
 
 def translate(min_max, tracks)
+  puts "Normalizing"
   min_x = min_max[:min_x]
   min_max[:min_x] = 0
   min_max[:max_x] = min_max[:max_x] - min_x
@@ -173,22 +175,24 @@ def translate(min_max, tracks)
 end
 
 def get_min_max_speed(min_max, tracks)
+  puts "Computing speed limits"
   tracks.each do |track|
     min_max[:min_speed] = track.min_speed if min_max[:min_speed].nil? or track.min_speed < min_max[:min_speed]
     min_max[:max_speed] = track.max_speed if min_max[:max_speed].nil? or track.max_speed > min_max[:max_speed]
   end
 end
 
-def generate_svg(min_max, tracks)
+def generate_svg(min_max, tracks, mode = :standard)
+  puts "Rendering #{mode}"
   FileUtils.mkdir_p('svg')
-  File.open("svg/graph_test.svg", 'w') do |svg_file|
+  File.open("svg/graph_#{mode}.svg", 'w') do |svg_file|
     Rasem::SVGImage.new(min_max[:max_x].round(2) + 2 * AIR, min_max[:max_y].round(2) + 2 * AIR, svg_file) do |image|
       tracks.each do |track|
         track.points.each_index do |index|
           if index > 0
             line track.points[index - 1].x.round(2) + AIR, track.points[index - 1].y.round(2) + AIR,
                  track.points[index].x.round(2) + AIR, track.points[index].y.round(2) + AIR,
-                 'stroke' => track.points[index].speed_color(track.min_speed, track.max_speed),
+                 'stroke' => track.points[index].speed_color((mode == :standard ? track.min_speed : min_max[:min_speed]), (mode == :standard ? track.max_speed : min_max[:max_speed])),
                  'stroke-width' => 3,
                  'stroke-opacity' => 0.1
           end
@@ -214,14 +218,8 @@ min_max = { :min_x => nil,
             :min_speed => nil,
             :max_speed => nil }
 
-puts "Computing drawing limits"
 get_min_max_pos min_max, tracks
-
-puts "Normalizing"
 translate min_max, tracks
-
-puts "Computing speed limits"
 get_min_max_speed min_max, tracks
-
-puts "Rendering"
-generate_svg min_max, tracks
+generate_svg min_max, tracks, :standard
+generate_svg min_max, tracks, :normalized
