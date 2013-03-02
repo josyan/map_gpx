@@ -6,12 +6,12 @@ require 'fileutils'
 require 'rasem'
 require 'pp'
 
-AIR = 5
+AIR = 20
 
 # from https://github.com/esmooov/svgsimplifier
 class RamerDouglasPeucker
 
-  def self.simplify(points, epsilon = 0.5)
+  def self.simplify(points, epsilon = 0.3)
     # Find the point with the maximum distance
     dmax = 0
     index = 0
@@ -47,7 +47,7 @@ class RamerDouglasPeucker
 end
 
 class Point
-  DIST_FACTOR = 10000
+  DIST_FACTOR = 6500
 
   attr_accessor :x, :y, :at, :speed
 
@@ -184,16 +184,37 @@ end
 
 def generate_svg(min_max, tracks, mode = :standard)
   puts "Rendering #{mode}"
+  line_width = 3
   FileUtils.mkdir_p('svg')
   File.open("svg/graph_#{mode}.svg", 'w') do |svg_file|
     Rasem::SVGImage.new(min_max[:max_x].round(2) + 2 * AIR, min_max[:max_y].round(2) + 2 * AIR, svg_file) do |image|
+      rectangle 0, 0, min_max[:max_x].round(2) + 2 * AIR, min_max[:max_y].round(2) + 2 * AIR, 'fill' => 'rgb(0,0,0)'
+      [{ :color => 64, :width => line_width + 2},
+       { :color => 0,  :width => line_width}].each do |settings|
+        tracks.each do |track|
+          track.points.each_index do |index|
+            if index > 0
+              line track.points[index - 1].x.round(2) + AIR,
+                   track.points[index - 1].y.round(2) + AIR,
+                   track.points[index].x.round(2) + AIR,
+                   track.points[index].y.round(2) + AIR,
+                   'stroke' => "rgb(#{settings[:color]},#{settings[:color]},#{settings[:color]})",
+                   'stroke-width' => settings[:width],
+                   'stroke-opacity' => 1.0,
+                   'stroke-linecap' => 'round'
+            end
+          end
+        end
+      end
       tracks.each do |track|
         track.points.each_index do |index|
           if index > 0
-            line track.points[index - 1].x.round(2) + AIR, track.points[index - 1].y.round(2) + AIR,
-                 track.points[index].x.round(2) + AIR, track.points[index].y.round(2) + AIR,
+            line track.points[index - 1].x.round(2) + AIR,
+                 track.points[index - 1].y.round(2) + AIR,
+                 track.points[index].x.round(2) + AIR,
+                 track.points[index].y.round(2) + AIR,
                  'stroke' => track.points[index].speed_color((mode == :standard ? track.min_speed : min_max[:min_speed]), (mode == :standard ? track.max_speed : min_max[:max_speed])),
-                 'stroke-width' => 3,
+                 'stroke-width' => line_width,
                  'stroke-opacity' => 0.1
           end
         end
